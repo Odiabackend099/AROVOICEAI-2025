@@ -62,27 +62,27 @@ try {
     
     if (Test-Path $out) {
         $fileSize = (Get-Item $out).Length
-        Write-Host "✅ SUCCESS! Generated from EC2: $out" -ForegroundColor Green
-        Write-Host "📊 File size: $([math]::Round($fileSize / 1024, 1)) KB" -ForegroundColor White
-        Write-Host "🎵 Playing monetization strategy..." -ForegroundColor Cyan
+        Write-Host "SUCCESS! Generated: $out" -ForegroundColor Green
+        Write-Host "File size: $([math]::Round($fileSize / 1024, 1)) KB" -ForegroundColor White
+        Write-Host "Playing monetization strategy..." -ForegroundColor Cyan
         
         # Auto-play the monetization audio
         Start-Process $out
         
         Write-Host ""
-        Write-Host "💰 MONETIZATION OPPORTUNITIES:" -ForegroundColor Yellow
-        Write-Host "• API Subscriptions: $5-20/month per creator" -ForegroundColor White
-        Write-Host "• White-label Licenses: $10K-50K per company" -ForegroundColor White
-        Write-Host "• Voice Marketplace: 30% commission" -ForegroundColor White
-        Write-Host "• Enterprise Contracts: $50K-200K annually" -ForegroundColor White
-        Write-Host "• Target Revenue: $50K+/month within 6 months" -ForegroundColor Green
+        Write-Host "MONETIZATION OPPORTUNITIES:" -ForegroundColor Yellow
+        Write-Host "- API Subscriptions: 5-20/month per creator" -ForegroundColor White
+        Write-Host "- White-label Licenses: 10K-50K per company" -ForegroundColor White
+        Write-Host "- Voice Marketplace: 30% commission" -ForegroundColor White
+        Write-Host "- Enterprise Contracts: 50K-200K annually" -ForegroundColor White
+        Write-Host "- Target Revenue: 50K+/month within 6 months" -ForegroundColor Green
     } else {
         throw "Audio file not created"
     }
 } catch {
-    Write-Host "❌ FAILED: $_" -ForegroundColor Red
-    Write-Host "💡 Troubleshooting:" -ForegroundColor Yellow
-    Write-Host "• Check if EC2 server is running" -ForegroundColor White
-    Write-Host "• Verify API key is correct" -ForegroundColor White
-    Write-Host "• Test health endpoint: $ApiBase/health" -ForegroundColor White
+    Write-Host "FAILED: $_" -ForegroundColor Red
+        Write-Host "Troubleshooting:" -ForegroundColor Yellow
+        Write-Host "- Check if EC2 server is running" -ForegroundColor White
+        Write-Host "- Verify API key is correct" -ForegroundColor White
+        Write-Host "- Test health endpoint: $ApiBase/health" -ForegroundColor White
 }
