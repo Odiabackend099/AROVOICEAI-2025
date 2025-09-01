@@ -1,0 +1,37 @@
+[
+  {
+    "id": "TC001",
+    "title": "verify_health_check_api_response",
+    "description": "Test the /health GET endpoint to ensure it returns system health status including ok boolean, total voices count, Nigerian voices count, and a hash string. Validate the response status is 200 and the JSON structure matches the specification."
+  },
+  {
+    "id": "TC002",
+    "title": "validate_voice_list_api_returns_nigerian_voices",
+    "description": "Test the /voices GET endpoint to verify it returns a list of available TTS voices filtered to Nigerian voices by default. Confirm the response status is 200 and the voices array contains at least one voice with ShortName and Locale properties."
+  },
+  {
+    "id": "TC003",
+    "title": "test_text_to_speech_api_with_valid_input",
+    "description": "Test the /api/speak POST endpoint with valid text input (20-120 words) and optional parameters like voice, format, rate, volume, and pitch. Verify the response status is 200 and the returned audio file is in the requested format and larger than 100KB."
+  },
+  {
+    "id": "TC004",
+    "title": "check_text_to_speech_api_authentication_enforcement",
+    "description": "Test the /api/speak POST endpoint without providing the X-API-Key header when authentication is enabled. Verify the API returns a 401 Unauthorized status and appropriate error message."
+  },
+  {
+    "id": "TC005",
+    "title": "validate_text_to_speech_api_rate_limiting",
+    "description": "Test the /api/speak POST endpoint by sending requests exceeding the configured rate limit from the same IP. Verify the API returns a 429 status code indicating rate limiting is enforced."
+  },
+  {
+    "id": "TC006",
+    "title": "verify_web_documentation_interface_loads_successfully",
+    "description": "Test the /docs GET endpoint to ensure the web-based documentation and interactive TTS testing interface loads successfully with status 200 and returns valid HTML content."
+  },
+  {
+    "id": "TC007",
+    "title": "validate_root_api_information_response",
+    "description": "Test the / GET endpoint to verify it returns basic API information including ok boolean, message string, docs URL, and health URL. Confirm the response status is 200 and JSON structure matches the specification."
+  }
+]

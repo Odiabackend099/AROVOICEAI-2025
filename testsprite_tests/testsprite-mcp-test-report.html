@@ -1,0 +1,274 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Markdown Preview</title>
+      <style>
+        body {
+          font-family: sans-serif;
+          padding: 40px;
+          line-height: 1.6;
+          background: #fdfdfd;
+          color: #333;
+        }
+        pre {
+          background: #f4f4f4;
+          padding: 10px;
+          border-radius: 5px;
+          overflow-x: auto;
+        }
+        code {
+          font-family: monospace;
+          background: #eee;
+          padding: 2px 4px;
+        }
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          margin-top: 20px;
+        }
+        th, td {
+          border: 1px solid #ccc;
+          padding: 8px 12px;
+          text-align: left;
+        }
+        th {
+          background-color: #f2f2f2;
+          font-weight: bold;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>TestSprite AI Testing Report(MCP)</h1>
+<hr>
+<h2>1️⃣ Document Metadata</h2>
+<ul>
+<li><strong>Project Name:</strong> odiadev-edge-tts-final</li>
+<li><strong>Version:</strong> N/A</li>
+<li><strong>Date:</strong> 2025-09-01</li>
+<li><strong>Prepared by:</strong> TestSprite AI Team</li>
+</ul>
+<hr>
+<h2>2️⃣ Requirement Validation Summary</h2>
+<h3>Requirement: Health Check API</h3>
+<ul>
+<li><strong>Description:</strong> Supports system health monitoring with voice availability and status checks.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC001</li>
+<li><strong>Test Name:</strong> verify_health_check_api_response</li>
+<li><strong>Test Code:</strong> <a href="./TC001_verify_health_check_api_response.py">code_file</a></li>
+<li><strong>Test Error:</strong> N/A</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/7d3412d8-c1af-400c-b683-13c7fff977ae/2ebd877c-788d-4181-af64-591de99f4145</li>
+<li><strong>Status:</strong> ✅ Passed</li>
+<li><strong>Severity:</strong> LOW</li>
+<li><strong>Analysis / Findings:</strong> Health endpoint correctly returns system health status including ok boolean, voice counts for Nigerian voices, and a hash string, fulfilling the specified JSON structure and returning status 200.</li>
+</ul>
+<hr>
+<h3>Requirement: Voice List API</h3>
+<ul>
+<li><strong>Description:</strong> Retrieves available Microsoft Edge TTS voices, filtered for Nigerian voices by default.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC002</li>
+<li><strong>Test Name:</strong> validate_voice_list_api_returns_nigerian_voices</li>
+<li><strong>Test Code:</strong> <a href="./TC002_validate_voice_list_api_returns_nigerian_voices.py">code_file</a></li>
+<li><strong>Test Error:</strong> N/A</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/7d3412d8-c1af-400c-b683-13c7fff977ae/24a66129-17e6-46c3-b065-63167c8af908</li>
+<li><strong>Status:</strong> ✅ Passed</li>
+<li><strong>Severity:</strong> LOW</li>
+<li><strong>Analysis / Findings:</strong> Voice list endpoint successfully returns a list filtered to Nigerian voices by default, with each voice containing the required ShortName and Locale properties, and HTTP status 200.</li>
+</ul>
+<hr>
+<h3>Requirement: Text-to-Speech API</h3>
+<ul>
+<li><strong>Description:</strong> Converts text to speech using Microsoft Edge TTS voices with rate, volume, and pitch controls.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC003</li>
+<li><strong>Test Name:</strong> test_text_to_speech_api_with_valid_input</li>
+<li><strong>Test Code:</strong> <a href="./TC003_test_text_to_speech_api_with_valid_input.py">code_file</a></li>
+<li><strong>Test Error:</strong> Expected status code 200 but got 401</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/7d3412d8-c1af-400c-b683-13c7fff977ae/eb3cf80a-14ed-4751-b8d1-0c783aa66052</li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> HIGH</li>
+<li><strong>Analysis / Findings:</strong> Test failed due to receiving a 401 Unauthorized status instead of 200, indicating that authentication is likely required but was not provided or was invalid during the request to /api/speak POST endpoint.</li>
+</ul>
+<hr>
+<h4>Test 2</h4>
+<ul>
+<li><strong>Test ID:</strong> TC004</li>
+<li><strong>Test Name:</strong> check_text_to_speech_api_authentication_enforcement</li>
+<li><strong>Test Code:</strong> <a href="./TC004_check_text_to_speech_api_authentication_enforcement.py">code_file</a></li>
+<li><strong>Test Error:</strong> N/A</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/7d3412d8-c1af-400c-b683-13c7fff977ae/a097013a-228a-4223-95d6-0b5fa2cb88fe</li>
+<li><strong>Status:</strong> ✅ Passed</li>
+<li><strong>Severity:</strong> LOW</li>
+<li><strong>Analysis / Findings:</strong> Authentication enforcement is working correctly. The /api/speak POST endpoint enforces authentication by returning 401 Unauthorized when the X-API-Key header is missing, demonstrating appropriate access control.</li>
+</ul>
+<hr>
+<h4>Test 3</h4>
+<ul>
+<li><strong>Test ID:</strong> TC005</li>
+<li><strong>Test Name:</strong> validate_text_to_speech_api_rate_limiting</li>
+<li><strong>Test Code:</strong> <a href="./TC005_validate_text_to_speech_api_rate_limiting.py">code_file</a></li>
+<li><strong>Test Error:</strong> Authentication failed with provided API key</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/7d3412d8-c1af-400c-b683-13c7fff977ae/0bcb5c75-96dc-4c41-a2cf-27f48c3233bc</li>
+<li><strong>Status:</strong> ❌ Failed</li>
+<li><strong>Severity:</strong> HIGH</li>
+<li><strong>Analysis / Findings:</strong> Test failed because authentication failed with the provided API key, preventing the rate-limiting logic from being properly tested. This means the rate limit feature could not be validated due to invalid or missing authentication credentials.</li>
+</ul>
+<hr>
+<h3>Requirement: Web Documentation Interface</h3>
+<ul>
+<li><strong>Description:</strong> Interactive web interface for testing the TTS API with voice selection and real-time audio playback.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC006</li>
+<li><strong>Test Name:</strong> verify_web_documentation_interface_loads_successfully</li>
+<li><strong>Test Code:</strong> <a href="./TC006_verify_web_documentation_interface_loads_successfully.py">code_file</a></li>
+<li><strong>Test Error:</strong> N/A</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/7d3412d8-c1af-400c-b683-13c7fff977ae/380f3dfe-bfdc-4b25-8e35-f9ee59dbe070</li>
+<li><strong>Status:</strong> ✅ Passed</li>
+<li><strong>Severity:</strong> LOW</li>
+<li><strong>Analysis / Findings:</strong> Web documentation interface loads successfully. The /docs GET endpoint successfully loads the web-based documentation and interactive TTS testing interface with status 200 and valid HTML content.</li>
+</ul>
+<hr>
+<h3>Requirement: Root API</h3>
+<ul>
+<li><strong>Description:</strong> API root endpoint providing basic information and available endpoints.</li>
+</ul>
+<h4>Test 1</h4>
+<ul>
+<li><strong>Test ID:</strong> TC007</li>
+<li><strong>Test Name:</strong> validate_root_api_information_response</li>
+<li><strong>Test Code:</strong> <a href="./TC007_validate_root_api_information_response.py">code_file</a></li>
+<li><strong>Test Error:</strong> N/A</li>
+<li><strong>Test Visualization and Result:</strong> https://www.testsprite.com/dashboard/mcp/tests/7d3412d8-c1af-400c-b683-13c7fff977ae/9c27fdbc-69bc-4499-930d-e3b6afd50e59</li>
+<li><strong>Status:</strong> ✅ Passed</li>
+<li><strong>Severity:</strong> LOW</li>
+<li><strong>Analysis / Findings:</strong> Root endpoint is functioning correctly. The root / GET endpoint returns basic API info including ok status, message, docs URL, and health URL as per specification, with HTTP 200 status.</li>
+</ul>
+<hr>
+<h2>3️⃣ Coverage &amp; Matching Metrics</h2>
+<ul>
+<li><strong>71% of tests passed</strong></li>
+<li><strong>29% of tests failed</strong></li>
+<li><strong>Key gaps / risks:</strong></li>
+</ul>
+<blockquote>
+<p>71% of tests passed fully.<br>
+29% of tests failed due to authentication issues.<br>
+Risks: API key authentication needs proper configuration for TTS functionality testing.</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Total Tests</th>
+<th>✅ Passed</th>
+<th>⚠️ Partial</th>
+<th>❌ Failed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Health Check API</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Voice List API</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Text-to-Speech API</td>
+<td>3</td>
+<td>1</td>
+<td>0</td>
+<td>2</td>
+</tr>
+<tr>
+<td>Web Documentation Interface</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr>
+<td>Root API</td>
+<td>1</td>
+<td>1</td>
+<td>0</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>4️⃣ Critical Issues &amp; Recommendations</h2>
+<h3>🔴 High Priority Issues</h3>
+<ol>
+<li>
+<p><strong>API Key Authentication Configuration</strong></p>
+<ul>
+<li><strong>Issue:</strong> TTS API tests failing due to invalid/missing API key</li>
+<li><strong>Impact:</strong> Core TTS functionality cannot be validated</li>
+<li><strong>Recommendation:</strong> Ensure proper API key configuration in test environment</li>
+</ul>
+</li>
+<li>
+<p><strong>Rate Limiting Validation</strong></p>
+<ul>
+<li><strong>Issue:</strong> Rate limiting tests cannot be executed due to authentication failure</li>
+<li><strong>Impact:</strong> Security feature validation incomplete</li>
+<li><strong>Recommendation:</strong> Fix authentication first, then validate rate limiting</li>
+</ul>
+</li>
+</ol>
+<h3>🟡 Medium Priority Issues</h3>
+<ol>
+<li><strong>Test Environment Setup</strong>
+<ul>
+<li><strong>Issue:</strong> Test environment needs proper API key configuration</li>
+<li><strong>Impact:</strong> Limited test coverage for core features</li>
+<li><strong>Recommendation:</strong> Implement proper test environment configuration</li>
+</ul>
+</li>
+</ol>
+<h3>🟢 Low Priority Issues</h3>
+<ol>
+<li><strong>Documentation Updates</strong>
+<ul>
+<li><strong>Issue:</strong> Consider keeping documentation up to date with API changes</li>
+<li><strong>Impact:</strong> Minor user experience impact</li>
+<li><strong>Recommendation:</strong> Add automated checks for documentation accuracy</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2>5️⃣ Overall Assessment</h2>
+<p>The ODIADEV Edge-TTS system demonstrates <strong>strong foundational functionality</strong> with:</p>
+<ul>
+<li>✅ <strong>Robust health monitoring</strong> system</li>
+<li>✅ <strong>Proper voice list management</strong> with Nigerian voice filtering</li>
+<li>✅ <strong>Effective authentication enforcement</strong></li>
+<li>✅ <strong>Well-designed web documentation interface</strong></li>
+<li>✅ <strong>Clear API information endpoints</strong></li>
+</ul>
+<p><strong>Primary concern:</strong> Authentication configuration needs to be resolved to enable full TTS functionality testing and rate limiting validation.</p>
+<p><strong>Recommendation:</strong> Address API key configuration issues to achieve 100% test coverage and validate all core TTS features.</p>
+
+    </body>
+    </html>
+  

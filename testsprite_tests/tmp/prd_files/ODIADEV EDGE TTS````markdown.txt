@@ -1,0 +1,301 @@
+ODIADEV EDGE TTS````markdown
+# ODIADEV Edge-TTS Platform — Product Requirements Document (PRD) — FINAL
+
+## 0. One-Line Summary
+A Nigeria-first, self-hosted text-to-speech (TTS) platform that wraps Microsoft Edge voices behind a clean REST API, ships with a web demo that **autoplays** when allowed (instant 1-tap fallback), and a Windows console tool for generating ready-to-post audio for TikTok/Reels — deployable in one click on EC2 **t3.small**.
+
+---
+
+## 1. Purpose & Goals
+**Why**  
+Creators and teams in Nigeria need fast, natural voiceovers without juggling cloud keys or heavy SaaS. We provide a **plug-and-play** service that runs on our infrastructure and returns MP3/WAV in seconds.
+
+**Goals (measurable)**
+- P95 time-to-first-audio ≤ **6s** for 20–120 words on t3.small (x86) with `mp3_48k`.
+- 100% successful generation via console tool; ≥95% success on web (autoplay or 1-tap).
+- Zero manual setup: EC2 user-data brings the service **up and live** at `http://<EC2-IP>/docs`.
+
+**Non-Goals**
+- Billing, multi-tenant isolation, quotas by account.
+- Studio editing, multitrack mixing, or background music.
+- Voice cloning.
+
+---
+
+## 2. Users & Personas
+- **Creator/Marketer (Primary):** Needs quick VO for TikTok/Reels/WhatsApp Status in Nigerian accent.
+- **Ops/Engineer (Secondary):** Deploys and keeps the service running on EC2, verifies health.
+- **Sales Demo (Secondary):** Runs web demo during pitch; requires autoplay or instant play.
+
+---
+
+## 3. Product Scope
+
+### 3.1 Core Features
+1. **REST API**
+   - `GET /health` — Cheap health (always OK; voice stats best-effort).
+   - `GET /voices` — Live Microsoft Edge voice list (filter to `*-NG` when enabled).
+   - `POST /api/speak` — Synthesize text to MP3/WAV; returns audio bytes.
+
+2. **Authentication**
+   - Header **`X-API-Key: <key>`** (enabled when `REQUIRE_API_KEY=true`).
+
+3. **Formats & Nigerian Defaults**
+   - Formats: `mp3_48k` (default), `mp3_96k`, `mp3_24k`, `wav_16k`, `wav_24k`.
+   - Default voices: `en-NG-EzinneNeural` (female), `en-NG-AbeoNeural` (male).
+
+4. **Web Demo (client/index.html)**
+   - Inputs: API base, key, voice, format, script.
+   - **Autoplay attempt** on load with `?autoplay=1`; instant **Tap-to-Play** fallback.
+   - Download button for generated MP3.
+
+5. **Console Tool (tools/console-generate.ps1)**
+   - Generates a ~60s “viral” script to `out/viral.mp3` and **autoplays** via default player.
+   - Params: `-ApiBase`, `-ApiKey`, `-Voice`, `-Format`.
+
+6. **Deployment**
+   - Hardened installer for **Amazon Linux 2023** and **Ubuntu 22.04**.
+   - Systemd service (`odiadev-edge-tts`), Gunicorn, Nginx on port 80.
+   - Dedicated system user `odiadev`, locked env at `/etc/odiadev-edge-tts.env`.
+
+### 3.2 Out of Scope (v1)
+- Queues, batch jobs, long-form SSML markup beyond rate/volume/pitch hints.
+- Persistent storage, DB, or analytics.
+- Multi-region HA.
+
+---
+
+## 4. User Stories
+
+- **U1 — “Make audio now”**
+  - As a creator, I paste a script (~60s), choose **Ezinne**, click **Generate**, and it autoplays or 1-tap plays. I download MP3 and post.
+  - Acceptance: MP3 file >100KB, playback starts (auto or button), no errors.
+
+- **U2 — “Console export”**
+  - As a marketer on Windows, I run one PowerShell command and hear the audio within 6s; the MP3 is saved to `out/viral.mp3`.
+  - Acceptance: command exits 0; player opens and audio plays.
+
+- **U3 — “Ops: launch server”**
+  - As ops, I paste the **user-data** into a t3.small (x86) instance and after boot I open `http://<IP>/docs` and synthesize.
+  - Acceptance: service active; `GET /` returns `{"ok":true}`; MP3 download works.
+
+---
+
+## 5. Functional Requirements
+
+### 5.1 API Contract
+**Auth:** when `REQUIRE_API_KEY=true`, reject requests without valid `X-API-Key`.
+
+**`GET /health`**
+- 200 JSON: `{ ok: true, voices: number, ng_voices: number, hash: string }`
+- Never blocks provisioning; voice stats are best-effort.
+
+**`GET /voices`**
+- 200 JSON: `{ ok: true, voices: Voice[] }`  
+- `Voice.ShortName`, `Voice.Locale` minimally returned. When `FILTER_NG=true`, only `*-NG`.
+
+**`POST /api/speak`**
+- Request (JSON):
+  ```json
+  {
+    "text":"Hello Lagos",
+    "voice":"en-NG-EzinneNeural",
+    "format":"mp3_48k",
+    "rate":"+0%",
+    "volume":"+0%",
+    "pitch":"+0Hz"
+  }
+````
+
+* Constraints: `text` required; length ≤ `MAX_CHARS` (default 800).
+* Response: **audio bytes** (`audio/mpeg` for MP3; `audio/wav` for WAV).
+* Errors: `400` invalid, `401` unauthorized, `429` rate limited, `500` synthesis fail.
+
+**Format map**
+
+* `mp3_48k` → `audio-24khz-48kbitrate-mono-mp3` *(default, Nigeria-friendly)*
+* `mp3_96k` → `audio-24khz-96kbitrate-mono-mp3`
+* `mp3_24k` → `audio-24khz-24kbitrate-mono-mp3`
+* `wav_16k` → `riff-16khz-16bit-mono-pcm`
+* `wav_24k` → `riff-24khz-16bit-mono-pcm`
+
+**Rate limiting**
+
+* In-memory per-IP window (per worker) `RATE_LIMIT_PER_MIN` (default 30). For multi-instance, upgrade to Redis (v2).
+
+### 5.2 Web Demo Behavior
+
+* On load: fetch voices; prefer `en-NG-EzinneNeural` if available.
+* Query params override fields: `api`, `key`, `voice`, `format`, `text`, `autoplay=1`.
+* Autoplay policy:
+
+  * set `<audio autoplay muted playsinline>` then attempt `play()` and unmute.
+  * If blocked, show **Tap to Play**; click calls `play()` and hides prompt.
+* Show status pill: `loading voices`, `synthesizing`, `playing ✅`, or `tap to play`.
+
+### 5.3 Console Tool
+
+* Downloads MP3 to `out/viral.mp3`.
+* Validates size (>100KB) and **`Start-Process`** to autoplay.
+
+---
+
+## 6. Non-Functional Requirements
+
+**Performance**
+
+* P95 synth time ≤6s for 20–120 words, MP3 48kbps.
+* Memory footprint < 300MB per worker on t3.small.
+
+**Reliability**
+
+* Systemd restarts on failure, `RestartSec=3`.
+* Health endpoint never fails the boot.
+
+**Security**
+
+* API key in header only; env file **chmod 600**.
+* No secrets embedded in client demo by default (only via query string for local demo).
+* CORS default `*`; can be restricted via `CORS_ORIGINS`.
+
+**Compliance**
+
+* No Cloudflare; direct Nginx → Gunicorn.
+* Nigeria-first defaults; minimal data retention (none by default).
+
+---
+
+## 7. Architecture
+
+**Runtime**
+
+* Flask app (`app.py`) → calls `edge-tts` library (no Azure key) → temporary file → returns bytes.
+* Gunicorn (`gthread`, 2 workers, 8 threads) on 8080.
+* Nginx proxy on 80, forwards to 127.0.0.1:8080.
+
+**Deployment**
+
+* EC2 `t3.small` (x86\_64). OS: **Amazon Linux 2023** or **Ubuntu 22.04**.
+* Install script creates user `odiadev`, app at `/opt/odiadev-edge-tts`, env at `/etc/odiadev-edge-tts.env`.
+
+**Logs**
+
+* Gunicorn logs to stdout/stderr → `journalctl -u odiadev-edge-tts`.
+* Nginx access/error in `/var/log/nginx/`.
+
+---
+
+## 8. Configuration (Env Vars)
+
+| Variable             | Default           | Notes                               |
+| -------------------- | ----------------- | ----------------------------------- |
+| `API_KEY`            | `ODIADEV-KEY-777` | Header: `X-API-Key`                 |
+| `REQUIRE_API_KEY`    | `true`            | `"true"/"false"`                    |
+| `PORT`               | `5000`            | Flask internal; Gunicorn binds 8080 |
+| `CORS_ORIGINS`       | `*`               | Comma-separated list to restrict    |
+| `OUTPUT_FORMAT`      | `mp3_48k`         | Default format                      |
+| `FILTER_NG`          | `true`            | Only `*-NG` in `/voices`            |
+| `MAX_CHARS`          | `800`             | Payload guard                       |
+| `RATE_LIMIT_PER_MIN` | `30`              | Per worker, per IP                  |
+
+---
+
+## 9. API Examples
+
+**cURL — health**
+
+```bash
+curl -s http://<EC2-IP>/health
+```
+
+**cURL — voices**
+
+```bash
+curl -s http://<EC2-IP>/voices | jq '.voices[] | {ShortName,Locale}' | head
+```
+
+**cURL — speak to file**
+
+```bash
+curl -s -X POST "http://<EC2-IP>/api/speak" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_KEY" \
+  -d '{"text":"Hello from ODIADEV","voice":"en-NG-EzinneNeural","format":"mp3_48k"}' \
+  --output out.mp3
+```
+
+**JS fetch (browser / Node)**
+
+```js
+await fetch('http://<EC2-IP>/api/speak',{
+  method:'POST',
+  headers:{'Content-Type':'application/json','X-API-Key':'YOUR_KEY'},
+  body:JSON.stringify({text:'Welcome to ODIADEV',voice:'en-NG-EzinneNeural',format:'mp3_48k'})
+});
+```
+
+---
+
+## 10. Acceptance Criteria
+
+* **A1:** Boot from user-data → Nginx + Gunicorn running; `GET /` returns `{ ok: true }`.
+* **A2:** `/voices` returns at least one voice; with `FILTER_NG=true` it shows only NG voices (or empty on upstream issue but `/health` still ok).
+* **A3:** `/api/speak` for 20–120 words returns MP3 within 6s (P95) and file size >100KB.
+* **A4:** Web demo autoplays (or shows 1-tap) and exposes **Download**.
+* **A5:** Console tool saves `out/viral.mp3` and autoplays.
+
+---
+
+## 11. Rollout Plan
+
+1. Launch EC2 (`t3.small`, x86) with user-data installer.
+2. Open Security Group: **HTTP (80)** from your IP or 0.0.0.0/0 for demo.
+3. Verify `http://<IP>/docs` and test synth.
+4. Share `client/index.html` using query params:
+   `index.html?api=http://<IP>&key=<KEY>&autoplay=1`
+5. Rotate API key weekly for demos.
+
+**Rollback**
+
+* `sudo systemctl disable --now odiadev-edge-tts`
+* Remove `/etc/nginx/conf.d/odiadev-edge-tts.conf` → `sudo nginx -t && sudo systemctl restart nginx`
+* `sudo rm -rf /opt/odiadev-edge-tts /etc/odiadev-edge-tts.env /etc/systemd/system/odiadev-edge-tts.service && sudo systemctl daemon-reload`
+
+---
+
+## 12. Risks & Mitigations
+
+| Risk                                 | Mitigation                                                                  |
+| ------------------------------------ | --------------------------------------------------------------------------- |
+| Upstream Microsoft endpoint slow     | Health is cheap; TTS smoke is best-effort; retries on client side if needed |
+| Browser blocks autoplay              | Attempt autoplay, then immediate visible **Tap-to-Play**                    |
+| Per-worker rate window inconsistency | v2: move to Redis; v1: cap workers to 2                                     |
+| Wrong AMI/arch (ARM)                 | Document **x86\_64 only**; checks in installer                              |
+| Key leakage via public demo link     | Prefer key via header (not URL); rotate frequently                          |
+
+---
+
+## 13. Roadmap (Post-v1)
+
+* **v1.1:** Redis rate limiting, request IDs, structured JSON logs.
+* **v1.2:** SSML subset support; cache last `N` results in RAM/disk.
+* **v1.3:** Simple dashboard (usage, recent requests) with key rotation.
+
+---
+
+## 14. Glossary
+
+* **Autoplay:** Browser starts audio without user gesture (may be blocked).
+* **Edge-TTS:** Open-source library hitting Microsoft Edge voices (no Azure key).
+* **t3.small:** 2 vCPU, 2 GB RAM; cost-efficient for demos in Nigeria.
+
+---
+
+## 15. Appendix — Nigeria-First Defaults
+
+* **Format:** `mp3_48k` (24 kHz, 48 kbps mono) → fast on 3G networks.
+* **Voices:** Prefer `en-NG-EzinneNeural` / `en-NG-AbeoNeural`.
+* **Timeouts:** Client 90s hard cap; internal backoffs 250/500/1000 ms.
+
+```
+```
