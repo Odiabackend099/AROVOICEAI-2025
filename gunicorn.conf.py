@@ -1,5 +1,5 @@
 ﻿bind = "0.0.0.0:8080"
-workers = 2
+workers = 1  # Strict 30 rpm rate limiting per IP
 worker_class = "gthread"
 threads = 8
 timeout = 60

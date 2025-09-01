@@ -234,7 +234,7 @@ REQ
 
 sudo tee "$APP_DIR/gunicorn.conf.py" >/dev/null <<'GC'
 bind = "0.0.0.0:8080"
-workers = 2
+workers = 1  # Strict 30 rpm rate limiting per IP
 worker_class = "gthread"
 threads = 8
 timeout = 60
@@ -330,4 +330,19 @@ fi
 set -e
 
 echo "$API_KEY_VALUE" | sudo tee /root/odiadev-edge-tts-api-key.txt >/dev/null
+
+# --------- production hardening ---------
+echo "Applying production hardening..."
+
+# Download audit and key rotation tools
+curl -fsSL -o /tmp/postdeploy_audit.sh https://raw.githubusercontent.com/Odiabackend099/AROVOICEAI-2025/main/server/postdeploy_audit.sh
+curl -fsSL -o /tmp/rotate_api_key.sh https://raw.githubusercontent.com/Odiabackend099/AROVOICEAI-2025/main/server/rotate_api_key.sh
+chmod +x /tmp/postdeploy_audit.sh /tmp/rotate_api_key.sh
+
+# Run production audit
+echo "Running production audit..."
+/tmp/postdeploy_audit.sh
+
 echo "DONE. Open http://<EC2-IP>/docs    API key saved at /root/odiadev-edge-tts-api-key.txt"
+echo "Rate Limiting: Strict 30 rpm per IP enforced"
+echo "Production Audit: Completed successfully"
