@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ODIADEV Viral TikTok — Edge-TTS Demo</title>
+<style>
+  :root{--bg:#0b0f19;--fg:#e5e7eb;--muted:#94a3b8;--accent:#00d897;}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Arial,sans-serif}
+  .wrap{max-width:920px;margin:32px auto;padding:24px}
+  .card{background:#0f1424;border:1px solid #1f2937;border-radius:18px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  h1{margin:0 0 10px;font-size:26px}
+  p{color:var(--muted)}
+  label{display:block;margin-top:12px;font-weight:600}
+  input,select,textarea{width:100%;padding:10px;border-radius:12px;border:1px solid #334155;background:#0b1222;color:var(--fg)}
+  button{padding:12px 18px;border-radius:12px;border:0;background:var(--accent);color:#08131a;font-weight:700;cursor:pointer}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .pill{display:inline-block;padding:2px 10px;border-radius:999px;background:#111827;border:1px solid #1f2937;color:#cbd5e1;font-size:12px}
+  .hidden{display:none}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;font-size:12px}
+  audio{width:100%;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>ODIADEV Viral TikTok — <span class="pill">Edge-TTS Live</span></h1>
+    <p>This page calls your deployed ODIADEV Edge-TTS API and tries to <strong>autoplay</strong> a ~60s viral script. If the browser blocks autoplay, a Play button appears instantly.</p>
+
+    <div class="row">
+      <div>
+        <label>API Base URL</label>
+        <input id="api" placeholder="http://YOUR-EC2-IP" />
+      </div>
+      <div>
+        <label>API Key <span class="pill">header: X-API-Key</span></label>
+        <input id="key" placeholder="ODIADEV-KEY-777" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Voice</label>
+        <select id="voice"></select>
+      </div>
+      <div>
+        <label>Format</label>
+        <select id="format">
+          <option value="mp3_48k" selected>MP3 48kbps</option>
+          <option value="mp3_96k">MP3 96kbps</option>
+          <option value="wav_16k">WAV 16kHz</option>
+        </select>
+      </div>
+    </div>
+
+    <label>Script (~60s)</label>
+    <textarea id="text" rows="6"></textarea>
+
+    <div class="controls">
+      <button id="btnGo">Generate & Play</button>
+      <button id="btnDl" class="hidden">Download</button>
+      <span id="status" class="pill">idle</span>
+    </div>
+
+    <audio id="audio" controls autoplay muted playsinline></audio>
+    <div id="tap" class="hidden" style="margin-top:10px">
+      <button id="btnPlay">Tap to Play (if blocked)</button>
+    </div>
+
+    <div class="mono" style="margin-top:14px">
+      Tip: you can open this file with query params so you never edit it:
+      <br>index.html?<b>api</b>=http://&lt;EC2-IP&gt;&amp;<b>key</b>=YOURKEY&amp;<b>voice</b>=en-NG-EzinneNeural&amp;<b>autoplay</b>=1
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+const qs = new URLSearchParams(location.search);
+const DEFAULT_TEXT = `Stop scrolling! This voice is generated live by ODIADEV Edge-TTS — hosted on our own server, no third-party keys.
+
+Here's the sauce: type your script, choose a Nigerian voice like Ezinne or Abeo, tap Generate, and the audio drops instantly as MP3 for TikTok, Reels, or WhatsApp status. It's fast on 3G and sounds natural.
+
+Ideas for today: mini tutorial, product shout-out, price update, or motivational hook. Keep it punchy and end with a call to action.
+
+Ready to level up your content? Try ODIADEV Edge-TTS now — link in bio or DM for access. No wahala, just clean audio that makes people stop and listen. Let's go!`;
+
+const elApi = $("api"), elKey = $("key"), elVoice = $("voice"), elFmt = $("format"),
+      elTxt = $("text"), elAudio = $("audio"), elGo = $("btnGo"), elStat = $("status"),
+      elTap = $("tap"), elBtnPlay = $("btnPlay"), elBtnDl = $("btnDl");
+
+function setStatus(s){ elStat.textContent = s; }
+
+function readConfig(){
+  elApi.value  = qs.get("api")  || elApi.value  || "http://YOUR-EC2-IP";
+  elKey.value  = qs.get("key")  || elKey.value  || "";
+  elTxt.value  = qs.get("text") || elTxt.value  || DEFAULT_TEXT;
+  elFmt.value  = qs.get("format") || elFmt.value;
+}
+
+async function loadVoices(){
+  setStatus("loading voices…");
+  try{
+    const r = await fetch(new URL("/voices", elApi.value), {cache:"no-store"});
+    const j = await r.json();
+    const voices = (j.voices||[]);
+    elVoice.innerHTML = "";
+    voices.forEach(v=>{
+      const o = document.createElement("option");
+      o.value = v.ShortName; o.text = `${v.ShortName} (${v.Locale})`;
+      elVoice.appendChild(o);
+    });
+    const qv = qs.get("voice");
+    if (qv) { elVoice.value = qv; }
+    else {
+      const pref = voices.find(v=>/en-NG-EzinneNeural/i.test(v.ShortName)) || voices[0];
+      if (pref) elVoice.value = pref.ShortName;
+    }
+    setStatus("voices ready");
+  }catch(e){
+    console.error(e); setStatus("voice load failed");
+  }
+}
+
+async function generate(playNow=true){
+  setStatus("synthesizing…");
+  elTap.classList.add("hidden"); elBtnDl.classList.add("hidden");
+  const body = { text: elTxt.value.trim(), voice: elVoice.value, format: elFmt.value };
+  const r = await fetch(new URL("/api/speak", elApi.value), {
+    method: "POST",
+    headers: { "Content-Type":"application/json", "X-API-Key": elKey.value },
+    body: JSON.stringify(body)
+  });
+  if(!r.ok){
+    const t = await r.text(); setStatus("error");
+    alert("TTS failed: " + t); return;
+  }
+  const blob = await r.blob(); const url = URL.createObjectURL(blob);
+  elAudio.src = url;
+  elBtnDl.onclick = ()=>{ const a = document.createElement("a"); a.href = url; a.download = "odiadev-tiktok.mp3"; a.click(); };
+  elBtnDl.classList.remove("hidden");
+
+  if (playNow){
+    try{
+      elAudio.muted = false;
+      await elAudio.play();
+      setStatus("playing ✅");
+    }catch(err){
+      setStatus("tap to play");
+      elTap.classList.remove("hidden");
+    }
+  } else {
+    setStatus("ready");
+  }
+}
+
+elGo.onclick = ()=>generate(true);
+elBtnPlay.onclick = async ()=>{ try{ elAudio.muted=false; await elAudio.play(); setStatus("playing ✅"); elTap.classList.add("hidden"); }catch(e){} };
+
+readConfig(); loadVoices().then(()=>{
+  if (qs.get("autoplay")==="1") generate(true);
+});
+</script>
+</body>
+</html>

@@ -4,9 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
-venv/
-ENV/
 build/
 develop-eggs/
 dist/
@@ -19,14 +16,20 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual Environment
-bin/
-include/
-pip-selfcheck.json
+venv/
+ENV/
+env/
+.venv/
+.ENV/
+.env/
 
 # IDE
 .vscode/
@@ -37,23 +40,20 @@ pip-selfcheck.json
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 
 # Project specific
 *.mp3
 *.wav
-*.m4a
-test_*.mp3
-temp_*.mp3
-
-# Environment variables
-.env
-.env.local
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
+out/
+_backup*/
+production-test.*
+create-test-mp3.ps1
 
 # Logs
 *.log

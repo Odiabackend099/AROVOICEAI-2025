@@ -1,4 +1,11 @@
-﻿#!/usr/bin/env python3
+﻿#!/usr/bin/env bash
+set -euo pipefail
+APP_DIR="/opt/odiadev-edge-tts"; PY_BIN="python3"; PORT="8080"
+API_KEY="${API_KEY:-ODIADEV-KEY-777}"; REQUIRE_API_KEY="${REQUIRE_API_KEY:-true}"
+if command -v apt-get >/dev/null 2>&1; then PKG="apt"; else if command -v dnf >/dev/null 2>&1; then PKG="dnf"; else if command -v yum >/dev/null 2>&1; then PKG="yum"; else echo "Unsupported distro"; exit 1; fi; fi; fi
+if [ "$PKG" = "apt" ]; then sudo apt-get update -y && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-venv python3-pip nginx; else sudo $PKG install -y python3 python3-pip nginx; $PY_BIN -m ensurepip --default-pip >/dev/null 2>&1 || true; fi
+sudo mkdir -p "$APP_DIR" && sudo chown -R $USER:$USER "$APP_DIR"
+cat > "$APP_DIR/app.py" <<'PY'#!/usr/bin/env python3
 """
 ODIADEV Edge-TTS  Production Flask API (final)
 - Microsoft Edge-TTS voices via `edge-tts` (no Azure key)
@@ -67,14 +74,13 @@ def _bad(msg:str, code:int=400):
     return jsonify({"ok":False, "error":msg}), code
 
 async def synthesize_to_bytes(text:str, voice:str, output_key:str, rate:str=None, volume:str=None, pitch:str=None)->bytes:
-    # Note: edge_tts currently only supports MP3 48kbps format regardless of output_key
-    kwargs={"voice":voice, "text":text}
+    kwargs={"voice":voice, "text":text, "output_format":FORMAT_MAP[output_key]}
     if rate: kwargs["rate"]=rate
     if volume: kwargs["volume"]=volume
     if pitch: kwargs["pitch"]=pitch
     tmp=None
     try:
-        tmp=tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+        tmp=tempfile.NamedTemporaryFile(suffix=".audio", delete=False)
         tmp.close()
         comm=edge_tts.Communicate(**kwargs)
         await comm.save(tmp.name)
@@ -139,12 +145,9 @@ def speak():
     fmt=payload.get("format") or DEFAULT_FORMAT
     if fmt not in FORMAT_MAP: return _bad("invalid format")
     rate=payload.get("rate"); volume=payload.get("volume"); pitch=payload.get("pitch")
-    
     data=run_async(synthesize_to_bytes(text, voice, fmt, rate, volume, pitch))
-    
-    # edge_tts always outputs MP3 format
-    mime="audio/mpeg"
-    filename="speech.mp3"
+    mime="audio/mpeg" if fmt.startswith("mp3") else "audio/wav"
+    filename=f"speech.{ 'mp3' if mime=='audio/mpeg' else 'wav' }"
     return send_file(io.BytesIO(data), mimetype=mime, as_attachment=True, download_name=filename)
 
 @app.get("/docs")
@@ -191,12 +194,12 @@ footer{{margin-top:12px;color:#6b7280}}
   <footer>Health: <span id="h">checking</span></footer>
 </div>
 <script>
-async function loadVoices(){{ 
+async function loadVoices(){ 
   const res=await fetch('/voices'); const js=await res.json();
   const sel=document.getElementById('v'); sel.innerHTML='';
-  (js.voices||[]).forEach(v=>{{ const o=document.createElement('option'); o.value=v.ShortName; o.text=`${{v.ShortName}} (${{v.Locale}})`; sel.appendChild(o); }});
-}}
-async function speak(){{ 
+  (js.voices||[]).forEach(v=>{ const o=document.createElement('option'); o.value=v.ShortName; o.text=`${v.ShortName} (${v.Locale})`; sel.appendChild(o); });
+}
+async function speak(){ 
   const k=document.getElementById('k').value;
   const text=document.getElementById('t').value;
   const voice=document.getElementById('v').value;
@@ -204,13 +207,13 @@ async function speak(){{
   const rate=document.getElementById('r').value;
   const volume=document.getElementById('u').value;
   const pitch=document.getElementById('p').value;
-  const res=await fetch('/api/speak',{{method:'POST',headers:{{'Content-Type':'application/json','X-API-Key':k}},body:JSON.stringify({{text,voice,format,rate,volume,pitch}})}});
-  if(!res.ok){{ const t=await res.text(); alert('Error: '+t); return; }}
+  const res=await fetch('/api/speak',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':k},body:JSON.stringify({text,voice,format,rate,volume,pitch})});
+  if(!res.ok){ const t=await res.text(); alert('Error: '+t); return; }
   const blob=await res.blob(); const url=URL.createObjectURL(blob); document.getElementById('a').src=url;
-}}
-async function health(){{
-  try{{ const r=await fetch('/health'); const j=await r.json(); document.getElementById('h').innerText=j.ok?`OK (voices: ${{j.voices}}, NG: ${{j.ng_voices}})`:('ERR '+j.error); }}catch(e){{document.getElementById('h').innerText='ERR';}}
-}}
+}
+async function health(){
+  try{ const r=await fetch('/health'); const j=await r.json(); document.getElementById('h').innerText=j.ok?`OK (voices: ${j.voices}, NG: ${j.ng_voices})`:('ERR '+j.error); }catch(e){document.getElementById('h').innerText='ERR';}
+}
 loadVoices(); health();
 </script>
 </body></html>
@@ -222,4 +225,69 @@ def root():
 
 if __name__ == "__main__":
     print(f"ODIADEV Edge-TTS starting on 0.0.0.0:{PORT} ...")
-    app.run(host="0.0.0.0", port=PORT, debug=False)
+    app.run(host="0.0.0.0", port=PORT, debug=False)PY
+cat > "$APP_DIR/requirements.txt" <<'REQ'Flask==3.0.3
+flask-cors==4.0.1
+edge-tts==6.1.10
+gunicorn==22.0.0
+requests==2.32.3REQ
+cat > "$APP_DIR/gunicorn.conf.py" <<'GC'bind = "0.0.0.0:8080"
+workers = 2
+worker_class = "gthread"
+threads = 8
+timeout = 60
+graceful_timeout = 30
+keepalive = 5
+accesslog = "-"
+errorlog = "-"GC
+cd "$APP_DIR"; $PY_BIN -m venv venv; source venv/bin/activate; pip install --upgrade pip wheel; pip install -r requirements.txt
+sudo bash -c "cat > /etc/odiadev-edge-tts.env" <<EOF
+API_KEY=$API_KEY
+REQUIRE_API_KEY=$REQUIRE_API_KEY
+PORT=$PORT
+CORS_ORIGINS=*
+OUTPUT_FORMAT=mp3_48k
+FILTER_NG=true
+MAX_CHARS=800
+RATE_LIMIT_PER_MIN=30
+EOF
+sudo bash -c "cat > /etc/systemd/system/odiadev-edge-tts.service" <<'SVC'
+[Unit]
+Description=ODIADEV Edge-TTS (Flask+Gunicorn)
+After=network.target
+[Service]
+Type=simple
+EnvironmentFile=/etc/odiadev-edge-tts.env
+WorkingDirectory=/opt/odiadev-edge-tts
+ExecStart=/opt/odiadev-edge-tts/venv/bin/gunicorn -c gunicorn.conf.py app:app
+User=www-data
+Group=www-data
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=65535
+[Install]
+WantedBy=multi-user.target
+SVC
+sudo systemctl daemon-reload; sudo systemctl enable odiadev-edge-tts --now
+sudo bash -c "cat > /etc/nginx/sites-available/odiadev-edge-tts.conf" <<'NGX'
+server {
+    listen 80 default_server;
+    server_name _;
+    client_max_body_size 4M;
+    location / {
+        proxy_pass         http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_read_timeout 65;
+    }
+}
+NGX
+if [ -d /etc/nginx/sites-enabled ]; then sudo ln -sf /etc/nginx/sites-available/odiadev-edge-tts.conf /etc/nginx/sites-enabled/odiadev-edge-tts.conf; else sudo cp /etc/nginx/sites-available/odiadev-edge-tts.conf /etc/nginx/conf.d/odiadev-edge-tts.conf; fi
+sudo nginx -t; sudo systemctl restart nginx
+curl -sSf http://127.0.0.1/health | grep -q '"ok": true' || { echo "Health check failed"; exit 1; }
+TMP=/tmp/odiadev-tts-test.mp3
+curl -s -X POST "http://127.0.0.1/api/speak" -H "Content-Type: application/json" -H "X-API-Key: $API_KEY" -d '{"text":"Hello from ODIADEV Edge TTS in Lagos","voice":"en-NG-EzinneNeural"}' --output "$TMP"
+[ -s "$TMP" ] || { echo "Synthesis failed"; exit 1; }
+echo "DONE. Open http://<EC2-IP>/docs"
